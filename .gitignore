@@ -13,3 +13,7 @@ captures/*.pcapng
 # Editores
 .vscode/
 *.swp
+
+# Bono QUIC: libreria descargada y certificados locales
+third_party/
+certs/
