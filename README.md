@@ -89,8 +89,8 @@ Abre **Wireshark** (`wireshark` en la terminal), haz doble clic en **Loopback: l
 src/common/protocolo.h     formato de mensajes, parser, detector de huecos/desorden (compartido)
 src/tcp/                   broker_tcp.c  publisher_tcp.c  subscriber_tcp.c
 src/udp/                   broker_udp.c  publisher_udp.c  subscriber_udp.c
-src/quic/                  (bono) pendiente de definir la librería
-scripts/                   demo.sh  netem.sh  medir_broker.sh
+src/quic/                  (bono) broker/publisher/subscriber_quic.c + README_QUIC.md (librería picoquic documentada)
+scripts/                   demo.sh  netem.sh  medir_broker.sh  instalar_picoquic.sh  generar_certificado.sh
 captures/                  .pcap (subir a Drive; los .pcap están en .gitignore)
 report/                    informe PDF
 Makefile
@@ -165,11 +165,28 @@ Prueba también **matar el broker** (Ctrl+C) con suscriptores conectados: en TCP
 | `bind: Address already in use` | Quedó un broker abierto: `pkill broker_tcp` / `pkill broker_udp` |
 | Wireshark no deja capturar | Falta el grupo: `sudo usermod -aG wireshark $USER` y reiniciar sesión |
 | No aparece la interfaz `lo` | Usa `sudo tcpdump -i lo ...` y abre el `.pcap` en Wireshark |
+| `make quic`: "Falta picoquic" | Ejecuta `./scripts/instalar_picoquic.sh` primero |
 | `make: *** missing separator` | El Makefile perdió sus tabs; vuelve a bajarlo del repo (`git checkout Makefile`) |
 | `tc: ... netem` da error | `sudo apt install linux-modules-extra-$(uname -r)` y reinicia |
 | Suscriptor no recibe nada | Se inició después del publicador, o el tema está escrito distinto (distingue mayúsculas) |
 | Scripts: `Permission denied` | `chmod +x scripts/*.sh` |
 
-## 9. Flujo de trabajo en equipo (GitHub)
+## 9. Bono QUIC (librería picoquic)
+Necesita una librería externa (QUIC incluye TLS 1.3); la justificación y cada función usada están en
+`src/quic/README_QUIC.md`. Pasos, en la VM:
+```bash
+./scripts/instalar_picoquic.sh        # una sola vez (unos minutos): compila picotls + picoquic en third_party/
+./scripts/generar_certificado.sh      # certs/cert.pem y certs/key.pem
+make quic
+./scripts/demo.sh quic                # debe terminar con "Mensajes recibidos: 20" en el suscriptor 2
+```
+Para mostrarlo en Wireshark (puerto UDP 9302, filtro `quic`), con llaves para descifrar:
+```bash
+sudo tcpdump -i lo -w captures/quic_pubsub.pcap "udp port 9302"          # terminal 1
+SSLKEYLOGFILE=$PWD/captures/quic_keys.log ./scripts/demo.sh quic         # terminal 2
+```
+Wireshark → Edit → Preferences → Protocols → TLS → *(Pre)-Master-Secret log filename* = `captures/quic_keys.log`.
+
+## 10. Flujo de trabajo en equipo (GitHub)
 Rama por tarea (`feat/udp`, `feat/quic`), Pull Request hacia `main` con revisión de otro integrante,
 un Issue por tarea en el tablero del repo. Los `.pcap` van a Drive (enlace en el informe), no al repo.
