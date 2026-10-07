@@ -8,7 +8,7 @@
 #
 # Con QUIC y llaves TLS para Wireshark:  SSLKEYLOGFILE=$PWD/captures/quic_keys.log ./scripts/demo.sh quic
 # Logs en logs/: broker_<proto>.log, sub1_<proto>.log, sub2_<proto>.log, pub1_..., pub2_...
-# Para capturar el trafico, abre otra terminal ANTES de correr este script:
+# Para capturar el trafico, abre otra terminal ANTES de correr este script (en macOS: -i lo0):
 #   sudo tcpdump -i lo -w captures/tcp_pubsub.pcap "tcp port 9300"
 #   sudo tcpdump -i lo -w captures/udp_pubsub.pcap "udp port 9301"
 #   sudo tcpdump -i lo -w captures/quic_pubsub.pcap "udp port 9302"
@@ -23,6 +23,8 @@ case "$PROTO" in
   quic) PUERTO=9302 ;;
   *) echo "Uso: $0 tcp|udp|quic [num_mensajes] [intervalo_ms]"; exit 1 ;;
 esac
+
+trap 'kill $(jobs -p) 2>/dev/null' EXIT   # Ctrl+C a mitad del demo no deja procesos huerfanos
 
 BIN=bin
 LOGS=logs

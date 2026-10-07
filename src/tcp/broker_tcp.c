@@ -2,13 +2,13 @@
  * broker_tcp.c - Broker publicador-suscriptor sobre TCP
  * Lab 3 - Grupo 9, Seccion 3
  *
- * COMANDOS (ejecutar desde la raiz del repo, en la VM Linux):
+ * COMANDOS (ejecutar desde la raiz del repo; Linux o macOS):
  *   Compilar : make tcp
  *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/broker_tcp src/tcp/broker_tcp.c)
  *   Ejecutar : ./bin/broker_tcp            # puerto 9300 por defecto
  *              ./bin/broker_tcp 9300
  *   Capturar : sudo tcpdump -i lo -w captures/tcp_pubsub.pcap "tcp port 9300"
- *              (o Wireshark: interfaz "lo", filtro de captura: tcp port 9300)
+ *              (en macOS la interfaz es "lo0"; o Wireshark: interfaz loopback, filtro de captura: tcp port 9300)
  *   CPU/RAM  : ps -o pid,%cpu,rss,cmd -p $(pgrep -n broker_tcp)
  *   Detener  : Ctrl+C (imprime estadisticas)
  *

@@ -84,6 +84,21 @@ Abre **Wireshark** (`wireshark` en la terminal), haz doble clic en **Loopback: l
 
 ---
 
+## 1b. Alternativa: correr todo en macOS (sin VM)
+Los programas compilan y corren igual en macOS. Cambian solo tres cosas:
+
+| | Linux | macOS |
+|---|---|---|
+| Interfaz loopback | `lo` | **`lo0`** (en todos los comandos `tcpdump -i`) |
+| Red mala | `tc` + netem | dummynet (`dnctl` + `pfctl`); `scripts/netem.sh` lo detecta solo |
+| Herramientas | `apt install ...` | `xcode-select --install` y `brew install --cask wireshark` |
+
+En macOS `netem.sh` solo afecta los puertos 9300–9302 de `lo0` y deja `pf` encendido con las reglas
+por defecto del sistema al hacer `off`. En las capturas de `lo0` la cabecera de enlace es *Null/Loopback*
+(4 B) en vez de Ethernet (14 B); las cabeceras IP, TCP y UDP son las mismas.
+
+---
+
 ## 2. Estructura del repo
 ```
 src/common/protocolo.h     formato de mensajes, parser, detector de huecos/desorden (compartido)
@@ -123,7 +138,7 @@ Una terminal por proceso. **Inicia primero broker, luego suscriptores, luego pub
 O todo automático: `./scripts/demo.sh tcp` / `./scripts/demo.sh udp 20 100` (logs en `logs/`).
 
 ## 5. Capturar con Wireshark / tcpdump
-Inicia la captura **antes** de lanzar los programas (para ver el handshake).
+Inicia la captura **antes** de lanzar los programas (para ver el handshake). En macOS usa `-i lo0`.
 ```bash
 sudo tcpdump -i lo -w captures/tcp_pubsub.pcap "tcp port 9300"     # Ctrl+C al terminar
 sudo tcpdump -i lo -w captures/udp_pubsub.pcap "udp port 9301"
@@ -136,7 +151,7 @@ Para el overhead: abre un paquete y compara la cabecera TCP (≥20 B) con la UDP
 ## 6. Provocar pérdida y desorden (para que el análisis tenga evidencia)
 En loopback casi nunca se pierde nada, por eso se simula una red mala:
 ```bash
-sudo ./scripts/netem.sh on            # 10% pérdida, 50 ms ±20 ms, 25% reorden
+sudo ./scripts/netem.sh on            # 10% pérdida, 50 ms de retraso, 25% reorden (Linux y macOS)
 ./scripts/demo.sh udp 50 100          # UDP: aparecen HUECO / DESORDENADO
 ./scripts/demo.sh tcp 50 100          # TCP: llega todo; en Wireshark verás retransmisiones
 sudo ./scripts/netem.sh off           # ¡SIEMPRE quitarlo al terminar!
@@ -164,7 +179,7 @@ Prueba también **matar el broker** (Ctrl+C) con suscriptores conectados: en TCP
 |---|---|
 | `bind: Address already in use` | Quedó un broker abierto: `pkill broker_tcp` / `pkill broker_udp` |
 | Wireshark no deja capturar | Falta el grupo: `sudo usermod -aG wireshark $USER` y reiniciar sesión |
-| No aparece la interfaz `lo` | Usa `sudo tcpdump -i lo ...` y abre el `.pcap` en Wireshark |
+| No aparece la interfaz `lo` | Usa `sudo tcpdump -i lo ...` (macOS: `-i lo0`) y abre el `.pcap` en Wireshark |
 | `make quic`: "Falta picoquic" | Ejecuta `./scripts/instalar_picoquic.sh` primero |
 | `make: *** missing separator` | El Makefile perdió sus tabs; vuelve a bajarlo del repo (`git checkout Makefile`) |
 | `tc: ... netem` da error | `sudo apt install linux-modules-extra-$(uname -r)` y reinicia |
