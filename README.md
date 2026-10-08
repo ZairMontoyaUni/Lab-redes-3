@@ -188,7 +188,7 @@ Prueba también **matar el broker** (Ctrl+C) con suscriptores conectados: en TCP
 
 ## 9. Bono QUIC (librería picoquic)
 Necesita una librería externa (QUIC incluye TLS 1.3); la justificación y cada función usada están en
-`src/quic/README_QUIC.md`. Pasos, en la VM:
+`src/quic/README_QUIC.md`. Pasos (Ubuntu o macOS; en macOS el script usa Homebrew y en Apple Silicon omite `picotls-fusion`, que es solo x86):
 ```bash
 ./scripts/instalar_picoquic.sh        # una sola vez (unos minutos): compila picotls + picoquic en third_party/
 ./scripts/generar_certificado.sh      # certs/cert.pem y certs/key.pem
@@ -197,7 +197,7 @@ make quic
 ```
 Para mostrarlo en Wireshark (puerto UDP 9302, filtro `quic`), con llaves para descifrar:
 ```bash
-sudo tcpdump -i lo -w captures/quic_pubsub.pcap "udp port 9302"          # terminal 1
+sudo tcpdump -i lo -w captures/quic_pubsub.pcap "udp port 9302"          # terminal 1 (macOS: -i lo0)
 SSLKEYLOGFILE=$PWD/captures/quic_keys.log ./scripts/demo.sh quic         # terminal 2
 ```
 Wireshark → Edit → Preferences → Protocols → TLS → *(Pre)-Master-Secret log filename* = `captures/quic_keys.log`.

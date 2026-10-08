@@ -20,9 +20,17 @@ QUIC_INC   = -Isrc/quic -I$(TP)/picoquic/picoquic -I$(TP)/picotls/include
 QUIC_LIBS  = $(TP)/picoquic/build/libpicoquic-core.a \
              $(TP)/picotls/build/libpicotls-openssl.a \
              $(TP)/picotls/build/libpicotls-core.a \
-             $(TP)/picotls/build/libpicotls-fusion.a \
+             $(wildcard $(TP)/picotls/build/libpicotls-fusion.a) \
              $(TP)/picotls/build/libpicotls-minicrypto.a \
              -lssl -lcrypto -lpthread -lm
+
+# macOS: OpenSSL viene de Homebrew (no esta en las rutas del sistema).
+# picotls-fusion solo existe en x86_64 (AES-NI); en Apple Silicon se omite con $(wildcard).
+ifeq ($(shell uname),Darwin)
+  OPENSSL_DIR := $(shell brew --prefix openssl@3 2>/dev/null)
+  QUIC_INC    += -I$(OPENSSL_DIR)/include
+  QUIC_LIBS   := -L$(OPENSSL_DIR)/lib $(QUIC_LIBS)
+endif
 
 all: tcp udp
 tcp: $(TCP)
