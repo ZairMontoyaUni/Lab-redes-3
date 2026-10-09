@@ -17,9 +17,15 @@ xcode-select --install
 ```
 
 ## 2. Obtener y compilar el proyecto
+Clonar el repositorio:
 ```bash
 git clone https://github.com/ZairMontoyaUni/Lab-redes-3.git
 cd Lab-redes-3
+```
+O descomprimir el `.zip` y abrir una terminal dentro de la carpeta descomprimida.
+
+Luego, en cualquiera de los dos casos:
+```bash
 chmod +x scripts/*.sh
 make
 ```
