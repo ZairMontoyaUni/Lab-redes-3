@@ -1,33 +1,3 @@
-/*
- * broker_quic.c - Broker publicador-suscriptor sobre QUIC (BONO)
- * Lab 3 - Grupo 9, Seccion 3
- *
- * REQUISITOS (una sola vez, en la VM; ver README.md y src/quic/README_QUIC.md):
- *   ./scripts/instalar_picoquic.sh            # descarga y compila picotls + picoquic en third_party/
- *   ./scripts/generar_certificado.sh          # crea certs/cert.pem y certs/key.pem (autofirmado)
- *
- * COMANDOS (desde la raiz del repo):
- *   Compilar : make quic
- *   Ejecutar : ./bin/broker_quic                                  # puerto 9302, certs/cert.pem, certs/key.pem
- *              ./bin/broker_quic 9302 certs/cert.pem certs/key.pem
- *   Con llaves TLS para que Wireshark descifre el trafico:
- *              SSLKEYLOGFILE=$PWD/captures/quic_keys.log ./bin/broker_quic
- *   Capturar : sudo tcpdump -i lo -w captures/quic_pubsub.pcap "udp port 9302"
- *              (Wireshark: Edit > Preferences > Protocols > TLS > (Pre)-Master-Secret log filename
- *               = captures/quic_keys.log ; filtro de visualizacion: quic)
- *   Detener  : Ctrl+C (imprime estadisticas)
- *
- * FUNCIONAMIENTO
- *   - picoquic_create() crea el contexto QUIC del servidor con certificado y llave TLS.
- *   - picoquic_packet_loop() es el bucle de red de la libreria: abre el socket UDP,
- *     recibe datagramas, los entrega a QUIC y envia lo que QUIC prepara.
- *   - Cada evento de una conexion llega a callback_broker(). Para cada conexion se
- *     crea un contexto (struct Conexion) con su buffer de lineas y sus temas.
- *   - SUB|tema            -> se guardan el tema y el stream por el que responder.
- *   - PUB|tema|id|seq|txt -> picoquic_add_to_stream() de MSG|... en el stream de
- *                            cada suscriptor del tema. QUIC se encarga de
- *                            confiabilidad, retransmision y control de congestion.
- */
 #define _DEFAULT_SOURCE
 #include <arpa/inet.h>
 #include "quic_comun.h"
@@ -37,7 +7,7 @@ typedef struct Conexion {
     struct Conexion *ant;
     picoquic_cnx_t  *cnx;
     int              num;
-    uint64_t         stream_id;                 /* stream por el que se le envian MSG */
+    uint64_t         stream_id;
     int              tiene_stream;
     char             buf[TAM_LINEA];
     int              len;
@@ -78,7 +48,6 @@ static void procesar_linea(Conexion *c, uint64_t stream_id, char *linea) {
         g_total_pub++;
         for (Conexion *d = g_lista; d != NULL; d = d->sig) {
             if (d == c || !d->tiene_stream || !esta_suscrito(d, m.tema)) continue;
-            /* Encola los bytes en el stream del suscriptor; QUIC los entrega confiable y en orden. */
             if (picoquic_add_to_stream(d->cnx, d->stream_id, (const uint8_t *)salida, (size_t)len, 0) == 0) {
                 enviados++;
                 g_total_reenvios++;
@@ -107,14 +76,12 @@ static void quitar_conexion(Conexion *c) {
     free(c);
 }
 
-/* Se invoca por cada evento de cada conexion (datos, cierre, etc.) */
 static int callback_broker(picoquic_cnx_t *cnx, uint64_t stream_id, uint8_t *bytes, size_t length,
                            picoquic_call_back_event_t evento, void *ctx_cb, void *ctx_stream)
 {
     (void)ctx_stream;
     Conexion *c = (Conexion *)ctx_cb;
 
-    /* Primer evento de una conexion nueva: aun no tiene contexto propio. */
     if (c == NULL || ctx_cb == picoquic_get_default_callback_context(picoquic_get_quic_ctx(cnx))) {
         c = calloc(1, sizeof *c);
         if (c == NULL) { picoquic_close(cnx, PICOQUIC_ERROR_MEMORY); return -1; }
@@ -123,7 +90,7 @@ static int callback_broker(picoquic_cnx_t *cnx, uint64_t stream_id, uint8_t *byt
         c->sig = g_lista;
         if (g_lista) g_lista->ant = c;
         g_lista = c;
-        picoquic_set_callback(cnx, callback_broker, c);   /* desde ahora ctx_cb sera 'c' */
+        picoquic_set_callback(cnx, callback_broker, c);
         printf("[broker] nueva conexion QUIC #%d\n", c->num);
     }
 
@@ -138,11 +105,11 @@ static int callback_broker(picoquic_cnx_t *cnx, uint64_t stream_id, uint8_t *byt
             c->len += (int)n;
             off += n;
             procesar_buffer(c, stream_id);
-            if (c->len >= (int)sizeof c->buf - 1) c->len = 0;   /* linea demasiado larga: se descarta */
+            if (c->len >= (int)sizeof c->buf - 1) c->len = 0;
         }
         break;
     }
-    case picoquic_callback_close:               /* el otro extremo cerro la conexion */
+    case picoquic_callback_close:
     case picoquic_callback_application_close:
     case picoquic_callback_stateless_reset:
         quitar_conexion(c);
@@ -154,7 +121,6 @@ static int callback_broker(picoquic_cnx_t *cnx, uint64_t stream_id, uint8_t *byt
     return 0;
 }
 
-/* Callback del bucle de red: se usa para detener el broker con Ctrl+C */
 static int loop_cb(picoquic_quic_t *quic, picoquic_packet_loop_cb_enum modo, void *ctx, void *arg) {
     (void)quic; (void)ctx;
     if (modo == picoquic_packet_loop_ready) {
@@ -179,10 +145,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     picoquic_set_default_idle_timeout(quic, IDLE_TIMEOUT_MS);
-    picoquic_set_key_log_file_from_env(quic);               /* si existe SSLKEYLOGFILE, guarda las llaves TLS */
+    picoquic_set_key_log_file_from_env(quic);
 
     printf("[broker] QUIC escuchando en el puerto UDP %d (Ctrl+C para salir)\n", puerto);
-    /* AF_INET: socket solo IPv4 (evita fallos en maquinas con IPv6 deshabilitado) */
     int ret = picoquic_packet_loop(quic, puerto, AF_INET, 0, 0, 0, loop_cb, NULL);
 
     printf("\n[broker] Publicaciones recibidas: %ld | Reenvios realizados: %ld | Conexiones: %d\n",

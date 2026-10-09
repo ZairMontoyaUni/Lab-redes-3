@@ -1,26 +1,3 @@
-/*
- * subscriber_quic.c - Suscriptor (hincha) sobre QUIC (BONO)
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS (desde la raiz del repo, despues de instalar picoquic):
- *   Compilar : make quic
- *   Uso      : ./bin/subscriber_quic <ip_broker> <puerto> <tema1> [tema2 ...]
- *   Ejemplos : ./bin/subscriber_quic 127.0.0.1 9302 PartidoA
- *              ./bin/subscriber_quic 127.0.0.1 9302 PartidoA PartidoB
- *   Variable opcional (suscriptor LENTO):  RETRASO_MS=200 ./bin/subscriber_quic ...
- *   Detener  : Ctrl+C (imprime el resumen: recibidos, perdidos, desordenados)
- *
- * IMPORTANTE: iniciar los suscriptores ANTES que los publicadores.
- *
- * FUNCIONAMIENTO
- *   - Crea el contexto QUIC de cliente y la conexion igual que el publicador.
- *   - En picoquic_callback_ready envia "SUB|tema\n" por cada tema con picoquic_add_to_stream()
- *     en el stream 0 y activa picoquic_enable_keep_alive() para que la conexion no
- *     se cierre por inactividad mientras espera mensajes.
- *   - Los mensajes MSG llegan por el callback (picoquic_callback_stream_data); se acumulan
- *     en un buffer y se procesan por lineas. Se verifica el numero de secuencia.
- *   - Si el broker desaparece, QUIC lo detecta por inactividad y llega un evento de cierre.
- */
 #define _DEFAULT_SOURCE
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -62,7 +39,7 @@ static int callback_sub(picoquic_cnx_t *cnx, uint64_t stream_id, uint8_t *bytes,
     (void)stream_id; (void)ctx_stream;
     SubCtx *s = (SubCtx *)ctx_cb;
     switch (evento) {
-    case picoquic_callback_ready:               /* handshake completado: registrar los temas */
+    case picoquic_callback_ready:
         s->stream_id = picoquic_get_next_local_stream_id(cnx, 0);
         for (int i = 0; i < s->ntemas; i++) {
             char linea[TAM_LINEA];
@@ -70,7 +47,7 @@ static int callback_sub(picoquic_cnx_t *cnx, uint64_t stream_id, uint8_t *bytes,
             picoquic_add_to_stream(cnx, s->stream_id, (const uint8_t *)linea, (size_t)len, 0);
             printf("[sub] suscrito al tema '%s'\n", s->temas[i]);
         }
-        picoquic_enable_keep_alive(cnx, 0);     /* 0 = idle_timeout / 2 */
+        picoquic_enable_keep_alive(cnx, 0);
         break;
     case picoquic_callback_stream_data:
     case picoquic_callback_stream_fin: {
@@ -134,7 +111,7 @@ int main(int argc, char *argv[]) {
     picoquic_quic_t *quic = picoquic_create(1, NULL, NULL, NULL, ALPN_PUBSUB, NULL, NULL,
         NULL, NULL, NULL, picoquic_current_time(), NULL, NULL, NULL, 0);
     if (quic == NULL) { fprintf(stderr, "No se pudo crear el contexto QUIC\n"); return 1; }
-    picoquic_set_null_verifier(quic);                       /* certificado autofirmado: solo laboratorio */
+    picoquic_set_null_verifier(quic);
     picoquic_set_default_idle_timeout(quic, IDLE_TIMEOUT_MS);
     picoquic_set_key_log_file_from_env(quic);
 

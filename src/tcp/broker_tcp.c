@@ -1,29 +1,3 @@
-/*
- * broker_tcp.c - Broker publicador-suscriptor sobre TCP
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS (ejecutar desde la raiz del repo; Linux o macOS):
- *   Compilar : make tcp
- *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/broker_tcp src/tcp/broker_tcp.c)
- *   Ejecutar : ./bin/broker_tcp            # puerto 9300 por defecto
- *              ./bin/broker_tcp 9300
- *   Capturar : sudo tcpdump -i lo -w captures/tcp_pubsub.pcap "tcp port 9300"
- *              (en macOS la interfaz es "lo0"; o Wireshark: interfaz loopback, filtro de captura: tcp port 9300)
- *   CPU/RAM  : ps -o pid,%cpu,rss,comm -p $(pgrep -n broker_tcp)
- *   Detener  : Ctrl+C (imprime estadisticas)
- *
- * FUNCIONAMIENTO
- *   - socket(SOCK_STREAM) + bind + listen: abre el puerto de escucha.
- *   - poll() vigila a la vez el socket de escucha y TODOS los clientes
- *     (un solo hilo, sin fork). Si el de escucha esta listo -> accept().
- *   - TCP es un flujo de bytes: cada cliente tiene su buffer y se procesa
- *     por lineas terminadas en '\n' (un mensaje puede llegar partido o pegado).
- *   - SUB|tema            -> guarda el tema en la tabla del cliente.
- *   - PUB|tema|id|seq|txt -> reenvia MSG|tema|id|seq|txt a los suscritos al tema.
- *   - El broker NO modifica el contenido del mensaje.
- *   - Nota (control de flujo): send() es bloqueante; si un suscriptor es lento
- *     y su buffer TCP se llena, el broker espera. Es parte del analisis.
- */
 #define _DEFAULT_SOURCE
 #include <errno.h>
 #include <unistd.h>
@@ -40,14 +14,14 @@ typedef struct {
     int  fd;
     char ip[INET_ADDRSTRLEN];
     int  puerto;
-    char buf[TAM_LINEA];                 /* acumula bytes hasta completar una linea */
+    char buf[TAM_LINEA];
     int  len;
     char temas[MAX_TEMAS_SUB][MAX_TEMA];
     int  ntemas;
 } Cliente;
 
 static Cliente        clientes[MAX_CLIENTES];
-static struct pollfd  fds[MAX_CLIENTES + 1];   /* fds[0] = socket de escucha; fds[i+1] = clientes[i] */
+static struct pollfd  fds[MAX_CLIENTES + 1];
 static int            nclientes = 0;
 static long           total_pub = 0, total_reenvios = 0;
 
@@ -93,11 +67,10 @@ static void eliminar_cliente(int i) {
     nclientes--;
 }
 
-/* Devuelve -1 si el cliente cerro la conexion o hubo error */
 static int leer_cliente(int i) {
     Cliente *c = &clientes[i];
     ssize_t r = recv(c->fd, c->buf + c->len, TAM_LINEA - c->len - 1, 0);
-    if (r == 0) return -1;                                   /* FIN del cliente */
+    if (r == 0) return -1;
     if (r < 0) return (errno == EINTR || errno == EAGAIN) ? 0 : -1;
 
     c->len += (int)r;
@@ -110,18 +83,18 @@ static int leer_cliente(int i) {
     int resto = (int)(fin - ini);
     memmove(c->buf, ini, resto);
     c->len = resto;
-    if (c->len >= TAM_LINEA - 1) c->len = 0;                 /* linea demasiado larga: se descarta */
+    if (c->len >= TAM_LINEA - 1) c->len = 0;
     return 0;
 }
 
 static void aceptar_cliente(int srv) {
     struct sockaddr_in ca;
     socklen_t cl = sizeof ca;
-    int fd = accept(srv, (struct sockaddr *)&ca, &cl);        /* termina el handshake de 3 vias */
+    int fd = accept(srv, (struct sockaddr *)&ca, &cl);
     if (fd < 0) return;
     if (nclientes >= MAX_CLIENTES) { close(fd); return; }
 
-    int nodelay = 1;                                          /* cada mensaje sale en su propio segmento */
+    int nodelay = 1;
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof nodelay);
 
     Cliente *c = &clientes[nclientes];

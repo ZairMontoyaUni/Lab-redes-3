@@ -1,21 +1,4 @@
 #!/usr/bin/env bash
-# netem.sh - Simula una red mala en la interfaz loopback para que UDP pierda/desordene
-# paquetes y TCP tenga que retransmitir. REQUIERE sudo.
-#   Linux : tc + netem sobre "lo"
-#   macOS : dummynet (dnctl + pfctl) sobre "lo0", solo para los puertos del lab (9300-9302)
-#
-# Uso:
-#   sudo ./scripts/netem.sh on                 # 10% perdida, 50ms de retraso, 25% reorden
-#   sudo ./scripts/netem.sh on 20 100 30 25    # perdida%, retraso_ms, jitter_ms, reorden%
-#   sudo ./scripts/netem.sh status
-#   sudo ./scripts/netem.sh off                # IMPORTANTE: quitarlo al terminar
-#
-# En macOS no existe "jitter": el reorden se logra mandando el <reorden%> de los paquetes
-# por una segunda tuberia con <jitter_ms> de retraso EXTRA (por defecto 250 ms, mas que el
-# intervalo entre mensajes, para que un mensaje alcance a adelantarse al anterior).
-#
-# Linux, si da error de modulo: sudo apt install linux-modules-extra-$(uname -r)
-
 ACCION=${1:-status}
 PERDIDA=${2:-10}
 RETRASO=${3:-50}
@@ -23,11 +6,11 @@ REORDEN=${5:-25}
 
 if [ "$(uname)" = "Darwin" ]; then
   JITTER=${4:-250}
-  ANCLA="com.apple/lab3"      # /etc/pf.conf ya trae: dummynet-anchor "com.apple/*"
-  LENTA=9302; NORMAL=9301     # numeros de tuberia (pipes) de dummynet
+  ANCLA="com.apple/lab3"
+  LENTA=9302; NORMAL=9301
   PUERTOS="{ 9300, 9301, 9302 }"
 
-  # $1 = texto extra de la regla lenta ("probability N%"); imprime las reglas del ancla
+
   reglas() {
     for dir in "from any to any port $PUERTOS" "from any port $PUERTOS to any"; do
       echo "dummynet out quick on lo0 proto { tcp, udp } $dir $1 pipe $LENTA"
@@ -42,7 +25,7 @@ if [ "$(uname)" = "Darwin" ]; then
       PLR=$(awk "BEGIN { print $PERDIDA / 100 }")
       dnctl pipe $NORMAL config delay "$RETRASO" plr "$PLR" || exit 1
       dnctl pipe $LENTA  config delay $((RETRASO + JITTER)) plr "$PLR" || exit 1
-      pfctl -q -f /etc/pf.conf 2>/dev/null          # asegura que el ancla com.apple/* este cargada
+      pfctl -q -f /etc/pf.conf 2>/dev/null
       if reglas "probability ${REORDEN}%" | pfctl -q -a "$ANCLA" -f - 2>/dev/null; then
         echo "dummynet ACTIVO en lo0: perdida ${PERDIDA}%, retraso ${RETRASO}ms, reorden ${REORDEN}% (+${JITTER}ms)"
       elif reglas "" | tail -n 2 | pfctl -q -a "$ANCLA" -f -; then
@@ -50,7 +33,7 @@ if [ "$(uname)" = "Darwin" ]; then
       else
         echo "No se pudieron cargar las reglas de pf" >&2; exit 1
       fi
-      pfctl -q -E 2>/dev/null                        # enciende pf si estaba apagado
+      pfctl -q -E 2>/dev/null
       ;;
     off)
       pfctl -q -a "$ANCLA" -F all 2>/dev/null

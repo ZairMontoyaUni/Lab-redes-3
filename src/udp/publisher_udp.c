@@ -1,20 +1,3 @@
-/*
- * publisher_udp.c - Publicador (periodista) sobre UDP
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS:
- *   Compilar : make udp
- *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/publisher_udp src/udp/publisher_udp.c)
- *   Uso      : ./bin/publisher_udp <ip_broker> <puerto> <tema> [num_mensajes=10] [intervalo_ms=500]
- *   Ejemplos : ./bin/publisher_udp 127.0.0.1 9301 PartidoA
- *              ./bin/publisher_udp 127.0.0.1 9301 PartidoB 20 200
- *              ./bin/publisher_udp 127.0.0.1 9301 PartidoA 1000 0    # rafaga sin pausa
- *
- * FUNCIONAMIENTO
- *   socket(SOCK_DGRAM) -> sendto() de un datagrama "PUB|tema|id|seq|texto\n"
- *   por cada evento. No hay connect ni handshake: el mensaje sale y se olvida.
- *   Aunque el broker este apagado, sendto() no avisa de ningun error.
- */
 #define _DEFAULT_SOURCE
 #include <errno.h>
 #include <unistd.h>

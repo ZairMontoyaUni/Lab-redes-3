@@ -1,20 +1,3 @@
-/*
- * publisher_tcp.c - Publicador (periodista) sobre TCP
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS:
- *   Compilar : make tcp
- *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/publisher_tcp src/tcp/publisher_tcp.c)
- *   Uso      : ./bin/publisher_tcp <ip_broker> <puerto> <tema> [num_mensajes=10] [intervalo_ms=500]
- *   Ejemplos : ./bin/publisher_tcp 127.0.0.1 9300 PartidoA
- *              ./bin/publisher_tcp 127.0.0.1 9300 PartidoB 20 200
- *              ./bin/publisher_tcp 127.0.0.1 9300 PartidoA 1000 0     # rafaga sin pausa
- *
- * FUNCIONAMIENTO
- *   socket(SOCK_STREAM) -> connect() (handshake SYN, SYN-ACK, ACK) ->
- *   send() de "PUB|tema|id|seq|texto\n" por cada evento -> close() (FIN).
- *   El id del publicador es "P<pid>" para distinguir publicadores del mismo tema.
- */
 #define _DEFAULT_SOURCE
 #include <errno.h>
 #include <unistd.h>
@@ -72,7 +55,7 @@ int main(int argc, char *argv[]) {
         if (intervalo > 0) dormir_ms(intervalo);
     }
 
-    close(fd);                                   /* envia FIN */
+    close(fd);
     printf("[pub %s] terminado\n", id);
     return 0;
 }

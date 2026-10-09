@@ -1,26 +1,3 @@
-/*
- * broker_udp.c - Broker publicador-suscriptor sobre UDP
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS (desde la raiz del repo; Linux o macOS):
- *   Compilar : make udp
- *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/broker_udp src/udp/broker_udp.c)
- *   Ejecutar : ./bin/broker_udp            # puerto 9301 por defecto
- *              ./bin/broker_udp 9301
- *   Capturar : sudo tcpdump -i lo -w captures/udp_pubsub.pcap "udp port 9301"
- *              (en macOS la interfaz es "lo0"; o Wireshark: interfaz loopback, filtro: udp port 9301)
- *   CPU/RAM  : ps -o pid,%cpu,rss,comm -p $(pgrep -n broker_udp)
- *   Detener  : Ctrl+C (imprime estadisticas)
- *
- * FUNCIONAMIENTO
- *   - socket(SOCK_DGRAM) + bind. NO hay listen/accept: UDP no tiene conexion.
- *   - Un solo socket recibe TODO con recvfrom(), que entrega tambien la
- *     direccion (IP:puerto) de quien envio el datagrama.
- *   - SUB|tema -> el broker recuerda la direccion del suscriptor y su tema
- *     (los suscriptores repiten el SUB cada 5 s: asi se recuperan si se pierde).
- *   - PUB|tema|id|seq|txt -> sendto() de MSG|... a cada direccion suscrita.
- *   - Cada mensaje es un datagrama independiente: sin ACK, sin reintentos.
- */
 #define _DEFAULT_SOURCE
 #include <errno.h>
 #include <unistd.h>

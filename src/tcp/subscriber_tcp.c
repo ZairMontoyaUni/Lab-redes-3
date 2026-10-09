@@ -1,26 +1,3 @@
-/*
- * subscriber_tcp.c - Suscriptor (hincha) sobre TCP
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS:
- *   Compilar : make tcp
- *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/subscriber_tcp src/tcp/subscriber_tcp.c)
- *   Uso      : ./bin/subscriber_tcp <ip_broker> <puerto> <tema1> [tema2 ...]
- *   Ejemplos : ./bin/subscriber_tcp 127.0.0.1 9300 PartidoA
- *              ./bin/subscriber_tcp 127.0.0.1 9300 PartidoA PartidoB
- *   Variables de entorno opcionales (para provocar problemas y analizarlos):
- *              RETRASO_MS=200 ./bin/subscriber_tcp ...   # suscriptor LENTO (prueba de control de flujo)
- *              RCVBUF=2048    ./bin/subscriber_tcp ...   # buffer de recepcion pequeno
- *   Detener  : Ctrl+C (imprime el resumen: recibidos, perdidos, desordenados)
- *
- * IMPORTANTE: iniciar los suscriptores ANTES que los publicadores.
- *
- * FUNCIONAMIENTO
- *   connect() -> send("SUB|tema\n") por cada tema -> recv() en bucle.
- *   Acumula bytes y procesa por lineas (TCP no respeta fronteras de mensaje).
- *   Verifica el numero de secuencia de cada mensaje para comprobar el orden.
- *   Si recv() devuelve 0, el broker cerro la conexion (se detecta la caida).
- */
 #define _DEFAULT_SOURCE
 #include <errno.h>
 #include <unistd.h>

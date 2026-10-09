@@ -1,21 +1,3 @@
-/*
- * protocolo.h - Definiciones comunes del sistema publicador-suscriptor
- * Laboratorio 3 - Grupo 9, Seccion 3 - ISIS2311L Redes y Comunicaciones
- *
- * Solo usa la biblioteca estandar de C y llamadas POSIX (signal, time).
- * Lo usan las versiones TCP, UDP (y QUIC, bono) para tener EXACTAMENTE
- * el mismo formato de mensajes.
- *
- * PROTOCOLO (texto plano, un mensaje por linea terminada en '\n'):
- *   Suscriptor -> Broker : SUB|tema
- *   Publicador -> Broker : PUB|tema|id_publicador|seq|texto
- *   Broker -> Suscriptor : MSG|tema|id_publicador|seq|texto
- *
- * 'seq' empieza en 1 y crece de a 1 por cada (tema, id_publicador).
- * Con ese numero el suscriptor detecta huecos (perdidos), desorden y duplicados.
- *
- * Puertos: TCP 9300 | UDP 9301 | QUIC 9302
- */
 #ifndef PROTOCOLO_H
 #define PROTOCOLO_H
 
@@ -26,7 +8,6 @@
 #include <time.h>
 #include <sys/socket.h>
 
-/* Algunos macOS no definen MSG_NOSIGNAL; da igual porque SIGPIPE se ignora en instalar_senales() */
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
@@ -43,14 +24,13 @@
 #define MAX_FUENTES    64
 
 typedef struct {
-    char tipo[4];            /* "SUB", "PUB" o "MSG" */
+    char tipo[4];
     char tema[MAX_TEMA];
     char id[MAX_ID];
     long seq;
     char texto[MAX_TEXTO];
 } Mensaje;
 
-/* ---------- Manejo de senales (Ctrl+C imprime el resumen y sale) ---------- */
 static volatile sig_atomic_t g_salir = 0;
 
 static void manejador_senal(int sig) { (void)sig; g_salir = 1; }
@@ -60,14 +40,13 @@ static inline void instalar_senales(void) {
     memset(&sa, 0, sizeof sa);
     sa.sa_handler = manejador_senal;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;                 /* sin SA_RESTART: recv/recvfrom devuelven EINTR */
+    sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
-    signal(SIGPIPE, SIG_IGN);        /* escribir en un socket cerrado no mata el proceso */
-    setvbuf(stdout, NULL, _IOLBF, 0);/* salida por lineas, util al redirigir a archivos */
+    signal(SIGPIPE, SIG_IGN);
+    setvbuf(stdout, NULL, _IOLBF, 0);
 }
 
-/* ---------- Utilidades ---------- */
 static inline void dormir_ms(int ms) {
     struct timespec ts;
     ts.tv_sec = ms / 1000;
@@ -89,7 +68,6 @@ static inline void hora_actual(char *dst, size_t n) {
     snprintf(dst + l, n - l, ".%03ld", ts.tv_nsec / 1000000);
 }
 
-/* Genera el texto de un evento de partido segun el numero de secuencia */
 static inline void construir_evento(char *dst, size_t n, long seq) {
     static const char *plantillas[] = {
         "Gol de Equipo A al minuto %d",
@@ -102,16 +80,13 @@ static inline void construir_evento(char *dst, size_t n, long seq) {
     snprintf(dst, n, plantillas[(seq - 1) % 5], minuto);
 }
 
-/* ---------- Parser de lineas ----------
- * Devuelve 1 si la linea es valida (y llena 'm'), 0 si no.
- * El texto (ultimo campo) puede contener '|'. */
 static inline int parsear_mensaje(const char *linea, Mensaje *m) {
     char copia[TAM_LINEA];
     char *campos[5];
     int nc = 0;
 
     memset(m, 0, sizeof *m);
-    strncpy(copia, linea, sizeof copia - 1);   /* copia truncada a TAM_LINEA-1 */
+    strncpy(copia, linea, sizeof copia - 1);
     copia[sizeof copia - 1] = '\0';
     size_t l = strlen(copia);
     while (l > 0 && (copia[l - 1] == '\n' || copia[l - 1] == '\r')) copia[--l] = '\0';
@@ -139,10 +114,6 @@ static inline int parsear_mensaje(const char *linea, Mensaje *m) {
     return 0;
 }
 
-/* ---------- Rastreador de secuencia (lo usan los suscriptores) ----------
- * Lleva el ultimo 'seq' visto por cada (tema, publicador). Asume que los
- * publicadores empiezan en seq=1, por eso los suscriptores deben iniciarse
- * ANTES que los publicadores. */
 typedef struct {
     char clave[MAX_TEMA + MAX_ID + 2];
     long ultimo;
@@ -152,8 +123,8 @@ typedef struct {
 typedef struct {
     Fuente fuentes[MAX_FUENTES];
     long recibidos;
-    long perdidos;       /* estimado: huecos detectados que nunca se rellenaron */
-    long desordenados;   /* llegaron con seq menor al ultimo visto */
+    long perdidos;
+    long desordenados;
     long duplicados;
 } Rastreador;
 
@@ -185,7 +156,7 @@ static inline int rastrear(Rastreador *r, const Mensaje *m, long *faltan) {
         return SEQ_HUECO;
     }
     if (m->seq == f->ultimo) { r->duplicados++; return SEQ_DUPLICADO; }
-    r->desordenados++;                       /* llego tarde: no estaba perdido */
+    r->desordenados++;
     if (r->perdidos > 0) r->perdidos--;
     return SEQ_DESORDENADO;
 }
@@ -213,4 +184,4 @@ static inline void imprimir_resumen(const Rastreador *r, const char *proto) {
     printf("==============================================\n");
 }
 
-#endif /* PROTOCOLO_H */
+#endif

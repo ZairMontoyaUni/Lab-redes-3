@@ -1,19 +1,13 @@
-# Binarios y compilados
 bin/
 *.o
-# Logs de pruebas
 logs/*
 !logs/.gitkeep
-# Capturas pesadas: subirlas a Drive o a Releases y poner el enlace en el informe
 captures/*.pcap
 captures/*.pcapng
-# Claves y certificados (bono QUIC)
 *.pem
 *.key
-# Editores
 .vscode/
 *.swp
 
-# Bono QUIC: libreria descargada y certificados locales
 third_party/
 certs/

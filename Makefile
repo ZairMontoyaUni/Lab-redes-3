@@ -1,11 +1,3 @@
-# Makefile - Lab 3 (Grupo 9, Seccion 3)
-# Comandos:
-#   make          -> compila TCP y UDP en bin/
-#   make tcp      -> solo TCP
-#   make udp      -> solo UDP
-#   make quic     -> BONO QUIC (requiere ./scripts/instalar_picoquic.sh antes)
-#   make clean    -> borra bin/
-
 CC     = gcc
 CFLAGS = -Wall -Wextra -O2 -g -Isrc/common
 BIN    = bin
@@ -14,7 +6,6 @@ TCP = $(BIN)/broker_tcp $(BIN)/publisher_tcp $(BIN)/subscriber_tcp
 UDP = $(BIN)/broker_udp $(BIN)/publisher_udp $(BIN)/subscriber_udp
 QUIC = $(BIN)/broker_quic $(BIN)/publisher_quic $(BIN)/subscriber_quic
 
-# Rutas de la libreria externa picoquic/picotls (las deja instalar_picoquic.sh)
 TP         = third_party
 QUIC_INC   = -Isrc/quic -I$(TP)/picoquic/picoquic -I$(TP)/picotls/include
 QUIC_LIBS  = $(TP)/picoquic/build/libpicoquic-core.a \
@@ -24,8 +15,6 @@ QUIC_LIBS  = $(TP)/picoquic/build/libpicoquic-core.a \
              $(TP)/picotls/build/libpicotls-core.a \
              -lssl -lcrypto -lpthread -lm
 
-# macOS: OpenSSL viene de Homebrew (no esta en las rutas del sistema).
-# picotls-fusion solo existe en x86_64 (AES-NI); en Apple Silicon se omite con $(wildcard).
 ifeq ($(shell uname),Darwin)
   OPENSSL_DIR := $(shell brew --prefix openssl@3 2>/dev/null)
   QUIC_INC    += -I$(OPENSSL_DIR)/include

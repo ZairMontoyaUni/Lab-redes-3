@@ -1,28 +1,3 @@
-/*
- * subscriber_udp.c - Suscriptor (hincha) sobre UDP
- * Lab 3 - Grupo 9, Seccion 3
- *
- * COMANDOS:
- *   Compilar : make udp
- *              (o: gcc -Wall -Wextra -O2 -Isrc/common -o bin/subscriber_udp src/udp/subscriber_udp.c)
- *   Uso      : ./bin/subscriber_udp <ip_broker> <puerto> <tema1> [tema2 ...]
- *   Ejemplos : ./bin/subscriber_udp 127.0.0.1 9301 PartidoA
- *              ./bin/subscriber_udp 127.0.0.1 9301 PartidoA PartidoB
- *   Variables de entorno opcionales (para provocar perdidas y analizarlas):
- *              RETRASO_MS=200 ./bin/subscriber_udp ...   # suscriptor LENTO: se llena el buffer y UDP pierde
- *              RCVBUF=2048    ./bin/subscriber_udp ...   # buffer de recepcion pequeno
- *   Detener  : Ctrl+C (imprime el resumen: recibidos, perdidos, desordenados)
- *
- * IMPORTANTE: iniciar los suscriptores ANTES que los publicadores.
- *
- * FUNCIONAMIENTO
- *   socket(SOCK_DGRAM) -> sendto("SUB|tema\n") al broker (el SO le asigna un
- *   puerto local) -> recvfrom() en bucle por ese mismo socket.
- *   Como un datagrama SUB tambien puede perderse, se repite cada 5 s
- *   (timeout de recepcion SO_RCVTIMEO); el broker ignora los repetidos.
- *   Con el numero de secuencia se marcan HUECO (perdido), DESORDENADO y DUPLICADO.
- *   Si el broker se cae, este programa NO se entera: simplemente deja de recibir.
- */
 #define _DEFAULT_SOURCE
 #include <errno.h>
 #include <unistd.h>
@@ -57,7 +32,7 @@ int main(int argc, char *argv[]) {
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) { perror("socket"); return 1; }
     if (rcvbuf > 0) setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof rcvbuf);
-    struct timeval tv = { 5, 0 };                      /* cada 5 s sin trafico -> reenviar SUB */
+    struct timeval tv = { 5, 0 };
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
 
     struct sockaddr_in broker;
