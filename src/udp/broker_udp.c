@@ -9,7 +9,7 @@
  *              ./bin/broker_udp 9301
  *   Capturar : sudo tcpdump -i lo -w captures/udp_pubsub.pcap "udp port 9301"
  *              (en macOS la interfaz es "lo0"; o Wireshark: interfaz loopback, filtro: udp port 9301)
- *   CPU/RAM  : ps -o pid,%cpu,rss,cmd -p $(pgrep -n broker_udp)
+ *   CPU/RAM  : ps -o pid,%cpu,rss,comm -p $(pgrep -n broker_udp)
  *   Detener  : Ctrl+C (imprime estadisticas)
  *
  * FUNCIONAMIENTO

@@ -19,9 +19,9 @@ TP         = third_party
 QUIC_INC   = -Isrc/quic -I$(TP)/picoquic/picoquic -I$(TP)/picotls/include
 QUIC_LIBS  = $(TP)/picoquic/build/libpicoquic-core.a \
              $(TP)/picotls/build/libpicotls-openssl.a \
-             $(TP)/picotls/build/libpicotls-core.a \
              $(wildcard $(TP)/picotls/build/libpicotls-fusion.a) \
              $(TP)/picotls/build/libpicotls-minicrypto.a \
+             $(TP)/picotls/build/libpicotls-core.a \
              -lssl -lcrypto -lpthread -lm
 
 # macOS: OpenSSL viene de Homebrew (no esta en las rutas del sistema).

@@ -9,7 +9,7 @@
  *              ./bin/broker_tcp 9300
  *   Capturar : sudo tcpdump -i lo -w captures/tcp_pubsub.pcap "tcp port 9300"
  *              (en macOS la interfaz es "lo0"; o Wireshark: interfaz loopback, filtro de captura: tcp port 9300)
- *   CPU/RAM  : ps -o pid,%cpu,rss,cmd -p $(pgrep -n broker_tcp)
+ *   CPU/RAM  : ps -o pid,%cpu,rss,comm -p $(pgrep -n broker_tcp)
  *   Detener  : Ctrl+C (imprime estadisticas)
  *
  * FUNCIONAMIENTO

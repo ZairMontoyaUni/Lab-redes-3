@@ -24,6 +24,12 @@
 #include <string.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/socket.h>
+
+/* Algunos macOS no definen MSG_NOSIGNAL; da igual porque SIGPIPE se ignora en instalar_senales() */
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 #define PUERTO_TCP    9300
 #define PUERTO_UDP    9301
